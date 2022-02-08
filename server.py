@@ -1,147 +1,100 @@
-# import socket library
-from cmath import e
 import socket
 import threading
-import json
 import time
-import select
-# Choose a port that is free
-PORT = 50
-def Message(text,author,timestamp):
-    dd = {"text":text,"author":author,"timestamp":timestamp}
-    return dd
-# An IPv4 address is obtained
-# for the server.  
-SERVER = socket.gethostbyname(socket.gethostname())
- 
-# Address is stored as a tuple
-ADDRESS = (SERVER, PORT)
-print(ADDRESS)
-# the format in which encoding
-# and decoding will occur
-FORMAT = "utf-8"
- 
-# Lists that will contains
-# all the clients connected to
-# the server and their names.
-clients,users = [],[]
- 
-# Create a new socket for
-# the server
+import json
+from datetime import datetime as dt
+import os
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 server = socket.socket(socket.AF_INET,
                        socket.SOCK_STREAM)
- 
-# bind the address of the
-# server to the socket
-server.bind(ADDRESS)
-def dedo(nam,js,num=0):
-    end = False
-    for x in js:
-        print(x,nam,num)
-        if end == False:
-            end = nam == x.split(".")[num]
-    return end
-def HandleLogin(pd,s,):
-    def messages(s,user,thr,):
-        while True:
-            pd = json.loads(s.recv(4096).decode())
-            if "MESS" in pd.keys():
-                if pd["MESS"] != "":
-                    message = Message(pd["MESS"],user["name"],time.time())
-                    with open("messages.json","r") as f:
-                        dd = json.load(f)
-                        dd[thr].append(message)
-                    with open("messages.json","w") as f:
-                        json.dump(dd,f)
-            elif "ADDU" in pd.keys():
-                with open("threads.json","r") as f:
-                    dd = json.load(f)
-                    dd[pd["ADDU"]].append(thr)
-                with open("threads.json","w") as f:
-                    json.dump(dd,f)
-            with open("messages.json","r") as f:
-                ll = json.load(f)
-                dat = {"MSGS":ll[thr]}
-                s.send(json.dumps(dat).encode())
-    def afterLogind(s,user):
-        dat = {}
-        pd = s.recv(4096).decode()
-        pd = json.loads(pd)["mode"]
-        if pd.split(".")[0] == "n":
-            with open("threads.json","r") as f:
-                dd = json.loads(f.read())
-                name = user["name"]
-                if not pd.split(".")[1] in dd[name]:
-                    dd[user["name"]].append(pd.split(".")[1])
-                    thr = pd.split(".")[1]
-                    de = False
-                else:
-                    de = True
-                    thr = pd.split(".")[1] + " 1"
-                    dd[user["name"]].append(pd.split(".")[1] + " 1")
-            with open("threads.json","w") as f:
-                json.dump(dd,f)
-            with open("messages.json","r") as f:
-                js = json.load(f)
-                if de:
-                    thr = pd.split(".")[1] + " 1"
-                    js.update({(pd.split(".")[1] + " 1"):[]})
-                else:
-                    thr = pd.split(".")[1]
-                    js.update({(pd.split(".")[1]):[]})
-            with open("messages.json","w") as f:
-                json.dump(js,f)
-            dat = {}
-            dat.update({"err":"suc"})
-            dat.update({"mess":[]})
-        else:
-            with open("messages.json","r") as f:
-                dat.update({"mess":json.load(f)[pd.split(".")[0]]})
-                thr = pd.split(".")[0]
-            s.send(json.dumps(dat).encode())
-        messages(s,user,thr)
-    if "LOGR" in pd.keys():
-        with open("./users.json","r") as f:
-            js = json.loads(f.read())
-            if not js.keys():
-                js.update({"logs":[]})
-            if not dedo(pd["name"],js["logs"]):
-                js["logs"].append(pd["name"]+"."+pd["pass"])
-        with open("./users.json","w") as f:
-            json.dump(js,f)
-        with open("./threads.json","r") as f:
-            js = json.loads(f.read())
-            js.update({pd["name"]:[]})
-        with open("./threads.json","w") as f:
-            json.dump(js,f)
-        dat = {}
-        dat.update({"conn":"suc"})
-        with open("./threads.json","r") as f:
-            dat.update({"thrs":json.load(f)[pd["name"]]})
-        print(dat)
-        s.send(json.dumps(dat).encode())
-        users.append(pd["name"])
-        clients.append(s)
-        afterLogind(s,pd)
-    elif "LOGL" in pd.keys():
-        with open("./users.json","r") as f:
-            js = json.loads(f.read())
-            if dedo(pd["name"],js["logs"]):
-                if dedo(pd["pass"],js["logs"],1):
-                    dat = {}
-                    dat.update({"conn":"suc"})
-                    with open("./threads.json","r") as f:
-                        dat.update({"thrs":json.load(f)[pd["name"]]})
-                    print(dat)
-                    s.send(json.dumps(dat).encode()) 
-                    users.append(pd["name"])
-                    clients.append(s)
-                    afterLogind(s,pd)
-
+server.bind((socket.gethostbyname(socket.gethostname()),50))
+def main(s):
+    while True:
+        data = json.loads(s.recv(4096).decode())
+        type = data["type"]
+        info = data["info"]
+        if type == "USER":
+            fail = "succ"
+            ## LOGIN
+            if info[0] == "L":
+                with open("./user.json","r") as f:
+                    dat = json.load(f)
+                    if not info[1] in dat["logs"].keys():
+                        fail = "fail"
+                        print(info[1],dat["logs"].keys())
+                    else:
+                        if not info[2] == dat["logs"][info[1]]:
+                            fail = "fail"
+                            print(info[2],dat["logs"][info[1]])
+            ## REGISTER
+            elif info[0] == "R":
+                ## json getting
+                with open("./user.json","r") as f:
+                    dat = json.load(f)
+                    if not info[1] in dat["logs"].keys():
+                        dat["logs"].update({info[1]:info[2]})
+                    else:
+                        fail = "fail"
+                with open("./user.json","w") as f:
+                    json.dump(dat,f)
+                ## adding thread list
+                with open("./threads.json","r") as f:
+                    dat = json.load(f)
+                    dat.update({info[1]:[]})
+                with open("./threads.json","w") as f:
+                    json.dump(dat,f)
+            s.send(json.dumps({"err":fail}).encode())
+        elif type == "FTHR":
+            with open("./threads.json") as f:
+                s.send(json.dumps({"thrs":json.load(f)[info]}).encode())
+        elif type == "FMSGS":
+            with open("./messages.json") as f:
+                data = json.load(f)
+            s.send(json.dumps({"msgs":data[info]}).encode())
+            print("sending")
+        elif type == "nmsg":
+            if not info[0].startswith("!"):
+                with open("./messages.json") as f:
+                    data = json.load(f)
+                with open("./messages.json","w") as f:
+                    data[info[1]].append({"text":info[0],"timestamp":int(time.time()),"author":info[2]})
+                    json.dump(data,f)
+            elif info[0].startswith("!adduser"):
+                name = info[0][9:]
+                with open("./threads.json") as f:
+                    data = json.load(f)
+                with open("./threads.json","w") as f:
+                    data[name].append(info[1])
+                    json.dump(data,f)
+            elif info[0].startswith("!listusers"):
+                lol = []
+                with open("./threads.json") as f:
+                    data = json.load(f)
+                for x in data:
+                    if info[1] in data[x]:
+                        lol.append(x)
+                    else:
+                        print(info[1],x,data[x])
+                with open("./messages.json") as f:
+                    data = json.load(f)
+                with open("./messages.json","w") as f:
+                    data[info[1]].append({"text":str(lol),"timestamp":int(time.time()),"author":"SYSTEM"})
+                    json.dump(data,f)
+        elif type == "nthr":
+            with open("./threads.json") as f:
+                data = json.load(f)
+            with open("./threads.json","w") as f:
+                data[info[0]].append(info[1])
+                json.dump(data,f)
+            with open("./messages.json") as f:
+                data = json.load(f)
+            with open("./messages.json","w") as f:
+                data.update({info[1]:[]})
+                json.dump(data,f)
 while True:
     server.listen()
     s,b = server.accept()
-    p = s.recv(4096).decode()
-    pd = json.loads(p)
-    x = threading.Thread(target=HandleLogin, args=(pd,s,))
+    x = threading.Thread(target=main, args=(s,))
     x.start()
