@@ -1,4 +1,4 @@
-*Chatpy*
+*Chatpy:*
 **A basic chat application written in python**
 ---
 Instructions:
